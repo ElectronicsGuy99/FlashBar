@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FlashBar Dashboard</title>
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8879/8879179.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--bg:#0e0e0e;--surface:#1a1a1a;--surface2:#242424;--border:#2e2e2e;--text:#e8e8e8;--muted:#666;--accent:#e8ff47;--accent-dim:#b5c938;--danger:#ff4d4d;--success:#4dff9e;--warning:#ffcc44;--radius:8px;--mono:'DM Mono',monospace;--display:'Outfit',sans-serif;}
+    body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;min-height:100vh;}
+    #live-banner{display:none;width:100%;padding:18px 28px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.01em;height:120px;overflow:hidden;}
+    #live-banner.visible{display:flex;}
+    #banner-icon{font-size:22px;line-height:1;}
+    #banner-text{flex:1;min-width:0;}
+    #banner-btn{display:inline-block;padding:7px 20px;border-radius:100px;font-family:var(--mono);font-size:13px;font-weight:500;text-decoration:none;border:2px solid currentColor;transition:opacity .2s;white-space:nowrap;flex-shrink:0;}
+    #banner-btn:hover{opacity:.75;}
+    #banner-status{display:none;width:100%;padding:18px 28px;font-family:var(--display);font-weight:600;font-size:16px;text-align:center;height:120px;overflow:hidden;}
+    #banner-status.visible{display:flex;align-items:center;justify-content:center;}
+    #banner-status.no-announce{color:var(--success);}
+    #banner-status.load-error{color:var(--danger);}
+    .page-shell{max-width:780px;margin:0 auto;padding:40px 24px 100px;}
+    #status-msg{color:var(--muted);font-size:13px;text-align:center;padding:60px 0;}
+    #auth-section{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+    .section-header{background:var(--surface);padding:14px 20px;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+    .badge{background:var(--surface2);border:1px solid var(--border);padding:2px 10px;border-radius:100px;font-size:10px;font-weight:500;letter-spacing:.12em;}
+    .badge.online{color:var(--success);border-color:#1a4a33;background:#0d2a1f;}
+    .section-body{padding:28px;}
+    #timeline-section{margin-bottom:28px;}
+    .timeline-toggle{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;}
+    .timeline-toggle:hover{color:var(--text);}
+    #timeline-body{display:none;padding:20px 0 4px;}
+    #timeline-body.visible{display:block;}
+    .timeline-empty{color:var(--muted);font-size:12px;text-align:center;padding:12px 0;}
+    .timeline-track{position:relative;padding-left:20px;}
+    .timeline-track::before{content:'';position:absolute;left:6px;top:0;bottom:0;width:1px;background:var(--border);}
+    .timeline-item{position:relative;margin-bottom:18px;}
+    .timeline-item::before{content:'';position:absolute;left:-17px;top:6px;width:9px;height:9px;border-radius:50%;border:2px solid var(--border);background:var(--bg);}
+    .timeline-item.active::before{background:var(--success);border-color:var(--success);}
+    .timeline-item.indefinite::before{background:var(--accent);border-color:var(--accent);}
+    .timeline-item.upcoming::before{background:var(--surface2);}
+    .timeline-label{font-size:11px;color:var(--muted);margin-bottom:2px;}
+    .timeline-text{font-size:13px;color:var(--text);}
+    .timeline-countdown{font-size:11px;color:var(--success);margin-top:2px;}
+    .timeline-countdown.ending{color:var(--warning);}
+    #preview-time-section{margin-bottom:24px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);}
+    .preview-time-header{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+    .preview-time-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .preview-time-row input{flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;}
+    .preview-time-row input:focus{border-color:var(--accent);}
+    #preview-time-result{margin-top:10px;font-size:12px;color:var(--muted);}
+    .preview-time-banner{padding:12px 20px;border-radius:var(--radius);display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:600;font-size:15px;margin-top:8px;}
+    #announcements-list{margin-bottom:16px;}
+    .empty-state{color:var(--muted);font-size:13px;text-align:center;padding:24px 0;}
+    .ann-card{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;transition:box-shadow .15s;}
+    .ann-card.drag-over{box-shadow:0 0 0 2px var(--accent);}
+    .ann-card.dragging{opacity:.4;}
+    .ann-card-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface2);cursor:pointer;user-select:none;}
+    .drag-handle{color:var(--muted);cursor:grab;font-size:14px;flex-shrink:0;padding:0 2px;}
+    .drag-handle:active{cursor:grabbing;}
+    .ann-card-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.15);}
+    .ann-card-preview{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ann-card-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .ann-card-schedule{font-size:11px;color:var(--muted);white-space:nowrap;}
+    .ann-card-countdown{font-size:11px;color:var(--success);white-space:nowrap;}
+    .ann-card-countdown.ending{color:var(--warning);}
+    .ann-card-toggle{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 4px;line-height:1;font-family:var(--mono);}
+    .ann-card-body{display:none;padding:24px;border-top:1px solid var(--border);}
+    .ann-card.expanded .ann-card-body{display:block;}
+    .field-group{margin-bottom:20px;}
+    .field-group:last-child{margin-bottom:0;}
+    label{display:block;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+    input[type="email"],input[type="password"],input[type="text"],input[type="url"],input[type="datetime-local"],textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .15s;}
+    input:focus,textarea:focus{border-color:var(--accent);}
+    textarea{resize:vertical;min-height:72px;}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .color-field{display:flex;align-items:center;gap:10px;}
+    .color-field input[type="color"]{width:40px;height:40px;padding:2px;border-radius:6px;cursor:pointer;flex-shrink:0;}
+    .color-field input[type="text"]{flex:1;}
+    .icon-row{display:flex;align-items:center;gap:10px;}
+    .icon-preview{font-size:26px;line-height:1;width:44px;height:44px;display:grid;place-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;flex-shrink:0;}
+    .icon-row input{flex:1;}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:var(--radius);font-family:var(--mono);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s,transform .1s;}
+    .btn:active{transform:scale(.98);}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+    .btn-primary{background:var(--accent);color:#0e0e0e;}
+    .btn-primary:hover:not(:disabled){background:var(--accent-dim);}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+    .btn-ghost:hover:not(:disabled){border-color:var(--text);color:var(--text);}
+    .btn-danger{background:transparent;color:var(--danger);border:1px solid #3a1515;}
+    .btn-danger:hover:not(:disabled){background:#1a0a0a;}
+    .btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    #error-msg{font-size:12px;margin-top:10px;min-height:16px;color:var(--danger);}
+    .inline-warn{font-size:12px;margin-top:8px;padding:8px 12px;border-radius:6px;border:1px solid #3a2e00;background:#1e1900;color:var(--warning);display:none;}
+    .inline-warn.visible{display:block;}
+    .toast{position:fixed;top:28px;right:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 18px;font-size:13px;transform:translateY(-80px);opacity:0;transition:all .3s cubic-bezier(.22,1,.36,1);z-index:999;max-width:340px;pointer-events:none;display:flex;align-items:flex-start;gap:10px;white-space:pre-line;}
+    .toast.show{transform:translateY(0);opacity:1;pointer-events:auto;}
+    .toast.success{border-color:#1a4a33;color:var(--success);}
+    .toast.error{border-color:#3a1515;color:var(--danger);}
+    .toast.info{border-color:#1a2e4a;color:#7ab8ff;}
+    .toast-undo{background:none;border:1px solid currentColor;border-radius:4px;padding:3px 8px;font-family:var(--mono);font-size:11px;cursor:pointer;color:inherit;flex-shrink:0;}
+    .preview-bar{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
+    .preview-inner{padding:18px 28px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--display);font-weight:600;font-size:16px;min-height:120px;transition:background .2s,color .2s;}
+    .settings-toggle:hover{color:var(--text);}
+    .schedule-hint{font-size:11px;color:var(--muted);margin-top:6px;}
+    .divider{height:1px;background:var(--border);margin:24px 0;}
+    @media(max-width:540px){.row-2{grid-template-columns:1fr;}.ann-card-schedule{display:none;}}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:340px;width:100%;}
+    .modal-title{font-family:var(--display);font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;}
+    .modal-msg{font-size:12px;color:var(--muted);margin-bottom:20px;}
+    .modal-btns{display:flex;gap:10px;justify-content:flex-end;}
+  </style>
+</head>
+<body>
+
+<div id="live-banner" role="banner" aria-live="polite">
+  <span id="banner-icon"></span>
+  <span id="banner-text"></span>
+  <a id="banner-btn" href="#" target="_blank" rel="noopener" style="display:none"></a>
+</div>
+<div id="banner-status" role="status"></div>
+
+<div class="page-shell">
+  <div id="status-msg">Connecting to Firebase...</div>
+
+  <div id="auth-section" style="display:none">
+
+<div id="login-panel">
+  <div class="section-header">
+    Admin Login
+    <span class="badge">&#128274; Auth Required</span>
+  </div>
+  <div class="section-body">
+    <div class="field-group"><label>Email</label><input type="email" id="login-email" placeholder="admin@example.com" autocomplete="username"/></div>
+    <div class="field-group"><label>Password</label><input type="password" id="login-pw" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password"/></div>
+    <div id="error-msg"></div>
+    <div class="btn-row" style="margin-top:12px"><button class="btn btn-primary" id="login-btn">Sign In</button></div>
+  </div>
+</div>
+
+<!-- TOOLS SECTION -->
+<div id="tools-panel" style="display:none">
+  <div class="section-header">
+    &#128295; Tools
+  </div>
+  <div class="section-body">
+
+    <div id="timeline-section">
+      <button class="timeline-toggle" id="timeline-toggle"><span>&#128197; Announcement Timeline</span><span id="timeline-chevron">&#9660;</span></button>
+      <div id="timeline-body"><div class="timeline-track" id="timeline-track"></div></div>
+    </div>
+
+    <div id="preview-time-section">
+      <div class="preview-time-header">&#128269; Preview at a specific time</div>
+      <div class="preview-time-row">
+        <input type="datetime-local" id="preview-time-input"/>
+        <button class="btn btn-ghost" id="preview-time-btn" style="padding:8px 16px;font-size:12px">Preview</button>
+        <button class="btn btn-ghost" id="preview-time-clear" style="padding:8px 16px;font-size:12px;display:none">Clear</button>
+      </div>
+      <div id="preview-time-result"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- EDITOR SECTION -->
+<div id="editor-panel" style="display:none;margin-top:16px">
+  <div class="section-header">
+    <div style="display:flex;align-items:center;gap:8px">Banner Editor <span class="badge online">&#9679; signed in</span></div>
+    <button class="btn btn-ghost" id="signout-btn" style="padding:5px 12px;font-size:11px">Sign Out</button>
+  </div>
+  <div class="section-body">
+
+    <div id="announcements-list"></div>
+    <button class="btn btn-ghost" id="add-ann-btn" style="width:100%;margin-bottom:4px">+ Add Announcement</button>
+    <div class="inline-warn" id="conflict-warn">&#128226; Announcements invalid - two or more announcements are active at the same time.</div>
+    <div class="divider"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="save-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save to Firebase
+      </button>
+      <button class="btn btn-danger" id="clear-btn">Clear All</button>
+      <button class="btn btn-ghost" id="revert-btn">🔄 Revert Changes</button>
+    </div>
+  </div>
+</div>
+
+  </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-msg" id="modal-msg"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="modal-cancel" style="padding:8px 16px;font-size:12px">Cancel</button>
+      <button class="btn btn-danger" id="modal-confirm" style="padding:8px 16px;font-size:12px">Confirm</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"><span id="toast-msg"></span><button class="toast-undo" id="toast-undo-btn" style="display:none">Undo</button></div>
+
+<script type="module">
+  import { initializeApp }     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot }
+                                from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence }
+                                from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  (async () => {
+
+  const firebaseConfig = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+
+  const bannerStatus   = document.getElementById("banner-status");
+  const liveBanner     = document.getElementById("live-banner");
+  const bannerIcon     = document.getElementById("banner-icon");
+  const bannerText     = document.getElementById("banner-text");
+  const bannerBtn      = document.getElementById("banner-btn");
+  const statusMsg      = document.getElementById("status-msg");
+  const authSection    = document.getElementById("auth-section");
+  const loginPanel     = document.getElementById("login-panel");
+  const editorPanel    = document.getElementById("editor-panel");
+  const toolsPanel     = document.getElementById("tools-panel");
+  const loginEmail     = document.getElementById("login-email");
+  const loginPw        = document.getElementById("login-pw");
+  const loginBtn       = document.getElementById("login-btn");
+  const errorMsg       = document.getElementById("error-msg");
+  const annList        = document.getElementById("announcements-list");
+  const addAnnBtn      = document.getElementById("add-ann-btn");
+  const saveBtn        = document.getElementById("save-btn");
+  const signoutBtn     = document.getElementById("signout-btn");
+  const conflictWarn   = document.getElementById("conflict-warn");
+
+  function checkConflict() {
+    const active = getActive(announcements);
+    conflictWarn.classList.toggle("visible", active === "conflict");
+  }
+  const timelineToggle = document.getElementById("timeline-toggle");
+  const timelineBody   = document.getElementById("timeline-body");
+  const timelineTrack  = document.getElementById("timeline-track");
+  const timelineChev   = document.getElementById("timeline-chevron");
+  const ptInput        = document.getElementById("preview-time-input");
+  const ptBtn          = document.getElementById("preview-time-btn");
+  const ptClear        = document.getElementById("preview-time-clear");
+  const ptResult       = document.getElementById("preview-time-result");
+  const toastMsg       = document.getElementById("toast-msg");
+  const toastUndoBtn   = document.getElementById("toast-undo-btn");
+
+  function showBannerError() {
+    statusMsg.style.display   = "none";
+    authSection.style.display = "block";
+    bannerStatus.textContent  = "🙁 There was an error loading the announcement banner.";
+    bannerStatus.classList.add("visible","load-error");
+  }
+  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    statusMsg.style.display   = "none";
+    authSection.style.display = "block";
+    bannerStatus.textContent  = "⚙️ Firebase is not configured — read the README to see how to set this up.";
+    bannerStatus.classList.add("visible","load-error");
+    return;
+  }
+
+  let app, db, auth;
+  try { app=initializeApp(firebaseConfig); db=getFirestore(app); auth=getAuth(app); }
+  catch(e) { showBannerError(); throw e; }
+  try { await setPersistence(auth, browserSessionPersistence); } catch(_) {}
+
+  const bannerRef   = doc(db, "banner",   "main");
+
+  let announcements = [];
+  let isDirty       = false;
+  let previewTime   = null;
+  let savedAnnouncements = [];
+
+  const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const defaultAnn = () => ({id:genId(),text:"",icon:"📢",bgColor:"#4f8ef7",textColor:"#ffffff",buttonText:"",buttonLink:"",start:"",end:""});
+
+  function isoToLocal(iso) {
+    if (!iso) return "";
+    try { const d=new Date(iso); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); } catch { return ""; }
+  }
+  function ensureHttps(v) { v=v.trim(); if(!v||/^https?:\/\//i.test(v)) return v; return "https://"+v; }
+  function formatSchedule(start,end) {
+    if (!start&&!end) return "Always active";
+    const fmt = iso => new Date(iso).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+    if (start&&!end) return "From "+fmt(start);
+    if (!start&&end) return "Until "+fmt(end);
+    return fmt(start)+" - "+fmt(end);
+  }
+  function formatCountdown(ms) {
+    if (ms<=0) return "ending now";
+    const s=Math.floor(ms/1000);
+    if (s<60) return "ends in "+s+"s";
+    const m=Math.floor(s/60);
+    if (m<60) return "ends in "+m+"m";
+    const h=Math.floor(m/60),rm=m%60;
+    if (h<24) return "ends in "+h+"h "+rm+"m";
+    const d=Math.floor(h/24),rh=h%24;
+    return "ends in "+d+"d "+rh+"h";
+  }
+
+  // TOAST
+  let toastTimer, toastUndoHandler;
+  function toast(msg,type="success",undoFn=null) {
+    toastMsg.textContent = msg;
+    const el = document.getElementById("toast");
+    el.className = "toast "+type+" show";
+    if (toastUndoHandler) toastUndoBtn.removeEventListener("click",toastUndoHandler);
+    if (undoFn) {
+      toastUndoBtn.style.display="inline-block";
+      toastUndoHandler = () => { undoFn(); el.classList.remove("show"); toast("✅ Announcement restored!", "success"); };
+      toastUndoBtn.addEventListener("click",toastUndoHandler);
+    } else { toastUndoBtn.style.display="none"; }
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>el.classList.remove("show"), undoFn?6000:3200);
+  }
+
+  // TIMELINE
+  timelineToggle.addEventListener("click", () => {
+    const open = timelineBody.classList.toggle("visible");
+    timelineChev.textContent = open ? "▲" : "▼";
+    if (open) renderTimeline();
+  });
+  function renderTimeline() {
+    const now = Date.now();
+    const sorted = [...announcements].filter(a=>a.text).sort((a,b)=>(a.start?new Date(a.start).getTime():0)-(b.start?new Date(b.start).getTime():0));
+    if (!sorted.length) { timelineTrack.innerHTML='<p class="timeline-empty">No announcements to show.</p>'; return; }
+    timelineTrack.innerHTML = sorted.map(a=>{
+      const s=a.start?new Date(a.start).getTime():0, e=a.end?new Date(a.end).getTime():Infinity;
+      const isActive=now>=s&&now<=e, isIndef=!a.end, upcoming=s>now;
+      const cls=isIndef?"indefinite":isActive?"active":upcoming?"upcoming":"";
+      const cdMs=a.end?new Date(a.end).getTime()-now:null;
+      const cdText=(isActive&&cdMs!==null)?'<div class="timeline-countdown'+(cdMs<3600000?" ending":"")+'">'+formatCountdown(cdMs)+"</div>":"";
+      return '<div class="timeline-item '+cls+'"><div class="timeline-label" style="color:'+(a.bgColor||"#4f8ef7")+'">'+(a.icon||"📢")+" "+formatSchedule(a.start,a.end)+'</div><div class="timeline-text">'+a.text+"</div>"+cdText+"</div>";
+    }).join("");
+  }
+
+  // PREVIEW AT TIME
+  ptBtn.addEventListener("click", () => {
+    if (!ptInput.value) { ptResult.textContent="Pick a date and time first."; return; }
+    previewTime = new Date(ptInput.value).getTime();
+    ptClear.style.display = "inline-flex";
+    renderPreviewAtTime();
+  });
+  ptClear.addEventListener("click", () => { previewTime=null; ptInput.value=""; ptResult.innerHTML=""; ptClear.style.display="none"; });
+  function renderPreviewAtTime() {
+    if (previewTime===null) return;
+    const active = getActiveAt(announcements, previewTime);
+    if (!active||active==="conflict") {
+      ptResult.innerHTML='<p style="color:var(--muted);font-size:12px;margin-top:8px">'+(active==="conflict"?"Multiple announcements active - conflict.":"No announcements active at this time.")+"</p>";
+      return;
+    }
+    ptResult.innerHTML='<div class="preview-time-banner" style="background:'+(active.bgColor||"#4f8ef7")+";color:"+(active.textColor||"#ffffff")+'"><span style="font-size:20px">'+(active.icon||"📢")+'</span><span style="flex:1">'+active.text+"</span>"+(active.buttonText?'<span style="padding:5px 14px;border-radius:100px;border:2px solid currentColor;font-family:var(--mono);font-size:12px">'+active.buttonText+"</span>":"")+"</div>";
+  }
+
+  // GET ACTIVE
+  function getActiveAt(anns, t) {
+    const active = anns.filter(a=>{ if(!a.text) return false; const s=a.start?new Date(a.start).getTime():0,e=a.end?new Date(a.end).getTime():Infinity; return t>=s&&t<=e; });
+    const scheduled=active.filter(a=>a.end), indefinite=active.filter(a=>!a.end);
+    if (scheduled.length>1||indefinite.length>1) return "conflict";
+    if (scheduled.length===1) return scheduled[0];
+    if (indefinite.length===1) return indefinite[0];
+    return null;
+  }
+  function getActive(anns) { return getActiveAt(anns, Date.now()); }
+
+  // APPLY BANNER
+  function applyBanner(anns) {
+    bannerStatus.classList.remove("visible","no-announce","load-error");
+    liveBanner.classList.remove("visible");
+    const active = getActive(anns);
+    if (active==="conflict") { if(conflictWarn) conflictWarn.classList.add("visible"); return; }
+    if (conflictWarn) conflictWarn.classList.remove("visible");
+    if (!active) {
+      bannerStatus.textContent="✅ There are no announcements!";
+      bannerStatus.classList.add("visible","no-announce");
+      return;
+    }
+    liveBanner.style.background=active.bgColor||"#4f8ef7";
+    liveBanner.style.color=active.textColor||"#ffffff";
+    bannerIcon.textContent=active.icon||"📢";
+    bannerText.textContent=active.text;
+    if (active.buttonText&&active.buttonLink) {
+      bannerBtn.textContent=active.buttonText; bannerBtn.href=active.buttonLink;
+      bannerBtn.style.color=active.textColor||"#ffffff"; bannerBtn.style.display="inline-block";
+    } else { bannerBtn.style.display="none"; }
+    liveBanner.classList.add("visible");
+  }
+
+  function parseData(data) {
+    if (!data) return [];
+    if (Array.isArray(data.announcements)) return data.announcements;
+    if (typeof data.text!=="undefined") return [{id:genId(),text:data.text||"",icon:data.icon||"📢",bgColor:data.bgColor||"#4f8ef7",textColor:data.textColor||"#ffffff",buttonText:data.buttonText||"",buttonLink:data.buttonLink||"",start:data.start||"",end:data.end||""}];
+    return [];
+  }
+
+  // DRAG AND DROP
+  let dragSrc=null;
+  function enableDrag(card) {
+    const handle = card.querySelector(".drag-handle");
+    let fromHandle = false;
+    handle.addEventListener("mousedown", () => { fromHandle = true; });
+    card.setAttribute("draggable","true");
+    card.addEventListener("dragstart",e=>{ if (!fromHandle) { e.preventDefault(); return; } dragSrc=card; card.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; });
+    card.addEventListener("dragend",()=>{ card.classList.remove("dragging"); dragSrc=null; fromHandle=false; });
+    card.addEventListener("dragover",e=>{ e.preventDefault(); if(dragSrc&&dragSrc!==card) card.classList.add("drag-over"); });
+    card.addEventListener("dragleave",()=>card.classList.remove("drag-over"));
+    card.addEventListener("drop",e=>{
+      e.preventDefault(); card.classList.remove("drag-over");
+      if (!dragSrc||dragSrc===card) return;
+      const cards=[...annList.querySelectorAll(".ann-card")];
+      const fromIdx=cards.indexOf(dragSrc), toIdx=cards.indexOf(card);
+      const [moved]=announcements.splice(fromIdx,1);
+      announcements.splice(toIdx,0,moved);
+      isDirty=true;
+      annList.insertBefore(dragSrc, toIdx<fromIdx?card:card.nextSibling);
+    });
+  }
+
+  // COUNTDOWNS
+  function updateCountdowns() {
+    const now=Date.now();
+    annList.querySelectorAll(".ann-card").forEach(card=>{
+      const ann=announcements.find(a=>a.id===card.dataset.id);
+      const cdEl=card.querySelector(".ann-card-countdown");
+      if (!ann||!ann.end||!cdEl) { if(cdEl) cdEl.textContent=""; return; }
+      const s=ann.start?new Date(ann.start).getTime():0, endMs=new Date(ann.end).getTime();
+      if (now>=s&&endMs>now) { const rem=endMs-now; cdEl.textContent=formatCountdown(rem); cdEl.className="ann-card-countdown"+(rem<3600000?" ending":""); }
+      else cdEl.textContent="";
+    });
+    if (timelineBody.classList.contains("visible")) renderTimeline();
+    if (previewTime!==null) renderPreviewAtTime();
+  }
+  setInterval(updateCountdowns,1000);
+
+  // CHECK CONFLICT (updates warning without touching the live banner)
+  function checkConflict() {
+    const active = getActive(announcements);
+    if (conflictWarn) conflictWarn.classList.toggle("visible", active === "conflict");
+  }
+
+  // CREATE CARD
+  function createCard(ann, expanded=false) {
+    const div=document.createElement("div");
+    div.className="ann-card"+(expanded?" expanded":"");
+    div.dataset.id=ann.id;
+    const dot=ann.bgColor||"#4f8ef7";
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    div.innerHTML=`
+      <div class="ann-card-header">
+        <span class="drag-handle" title="Drag to reorder">&#8942;</span>
+        <div class="ann-card-dot" style="background:${dot}"></div>
+        <span class="ann-card-preview">${ann.icon||"📢"} ${ann.text||"(no text)"}</span>
+        <div class="ann-card-right">
+          <span class="ann-card-schedule">${formatSchedule(ann.start,ann.end)}</span>
+          <span class="ann-card-countdown"></span>
+          <button class="ann-card-toggle">${expanded?"▲":"▼"}</button>
+          <button class="btn btn-ghost dup-btn" style="padding:4px 10px;font-size:11px" title="Duplicate">&#10697;</button>
+          <button class="btn btn-danger ann-card-delete" style="padding:5px 10px;font-size:11px;letter-spacing:0">Delete</button>
+        </div>
+      </div>
+      <div class="ann-card-body">
+        <label style="margin-bottom:8px;display:block">Live Preview</label>
+        <div class="preview-bar"><div class="preview-inner" style="${ann.text?"background:"+dot+";color:"+(ann.textColor||"#ffffff"):""}">
+          ${ann.text
+            ?`<span style="font-size:22px;line-height:1">${ann.icon||"📢"}</span><span style="font-family:var(--display);font-weight:600;font-size:16px;flex:1">${ann.text}</span>${ann.buttonText?`<span style="padding:6px 18px;border-radius:100px;border:2px solid currentColor;font-family:var(--mono);font-size:12px">${ann.buttonText}</span>`:""}`
+            :`<span style="font-family:var(--mono);font-size:12px;opacity:.5">Preview updates as you type</span>`}
+        </div></div>
+        <div class="field-group"><label>Announcement Text</label><textarea class="f-text" placeholder="Enter your announcement...">${ann.text||""}</textarea></div>
+        <div class="field-group"><label>Icon (emoji)</label>
+          <div class="icon-row"><div class="icon-preview">${ann.icon||"📢"}</div><input type="text" class="f-icon" placeholder="Enter emoji here (leave blank for megaphone)" maxlength="8" value="${ann.icon||""}"/></div>
+        </div>
+        <div class="row-2" style="margin-bottom:20px;align-items:end">
+          <div class="field-group" style="margin-bottom:0">
+            <label>Background Color <span style="opacity:.5;font-size:10px">(leave blank for default)</span></label>
+            <div class="color-field"><input type="color" class="f-bgcolor-picker" value="${ann.bgColor||"#4f8ef7"}"/><input type="text" class="f-bgcolor" value="${ann.bgColor||""}" placeholder="#4f8ef7" maxlength="9"/></div>
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label>Text Color <span style="opacity:.5;font-size:10px">(leave blank for white)</span></label>
+            <div class="color-field"><input type="color" class="f-textcolor-picker" value="${ann.textColor||"#ffffff"}"/><input type="text" class="f-textcolor" value="${ann.textColor||""}" placeholder="#ffffff" maxlength="9"/></div>
+          </div>
+        </div>
+        <div class="row-2" style="margin-bottom:20px">
+          <div class="field-group" style="margin-bottom:0"><label>Button Text <span style="opacity:.5;font-size:10px">(optional)</span></label><input type="text" class="f-btn-text" placeholder="Learn More" value="${ann.buttonText||""}"/></div>
+          <div class="field-group" style="margin-bottom:0"><label>Button Link <span style="opacity:.5;font-size:10px">(optional)</span></label><input type="url" class="f-btn-link" placeholder="https://..." value="${ann.buttonLink||""}"/></div>
+        </div>
+        <div class="row-2">
+          <div class="field-group"><label>Start Date/Time <span style="opacity:.5;font-size:10px">(optional)</span></label><input type="datetime-local" class="f-start" value="${isoToLocal(ann.start)}"/><p class="schedule-hint">Leave blank to show immediately</p></div>
+          <div class="field-group"><label>End Date/Time <span style="opacity:.5;font-size:10px">(optional)</span></label><input type="datetime-local" class="f-end" value="${isoToLocal(ann.end)}"/><p class="schedule-hint">Leave blank to show indefinitely</p></div>
+        </div>
+        <button class="btn btn-ghost auto-start-btn" style="width:100%;margin-top:10px;margin-bottom:4px;font-size:12px;justify-content:center;">⛓️ Set start time after another announcement's end</button>
+        <button class="btn btn-ghost auto-end-btn" style="width:100%;margin-top:4px;margin-bottom:10px;font-size:12px;justify-content:center;">⛓️ Set end time before another announcement's start</button>
+        <p class="schedule-hint" style="margin-top:6px">&#9200; Times are in your local timezone (${tz}).</p>
+        <div class="inline-warn date-warn">&#128197; The dates are invalid.</div>
+        <div class="inline-warn btn-warn">&#128280; Button invalid - you need both button text and a link, or neither.</div>
+        <div class="inline-warn font-warn">&#9888;&#65039; Font size is reduced in the live banner because this announcement exceeds 200 characters.</div>
+      </div>`;
+
+const id=ann.id;
+const getAnn=()=>announcements.find(a=>a.id===id);
+const setField=(f,v)=>{ const a=getAnn(); if(a){a[f]=v;isDirty=true; checkConflict();} };
+const header=div.querySelector(".ann-card-header");
+const toggleBtn=div.querySelector(".ann-card-toggle");
+const deleteBtn=div.querySelector(".ann-card-delete");
+const dupBtn=div.querySelector(".dup-btn");
+const fText=div.querySelector(".f-text");
+const fIcon=div.querySelector(".f-icon");
+const iconPrev=div.querySelector(".icon-preview");
+const fBg=div.querySelector(".f-bgcolor");
+const fBgPkr=div.querySelector(".f-bgcolor-picker");
+const fTc=div.querySelector(".f-textcolor");
+const fTcPkr=div.querySelector(".f-textcolor-picker");
+const fBtnTxt=div.querySelector(".f-btn-text");
+const fBtnLnk=div.querySelector(".f-btn-link");
+const fStart=div.querySelector(".f-start");
+const fEnd=div.querySelector(".f-end");
+const prevEl=div.querySelector(".preview-inner");
+const dotEl=div.querySelector(".ann-card-dot");
+const prevSpan=div.querySelector(".ann-card-preview");
+const schedSpan=div.querySelector(".ann-card-schedule");
+const dateWarn=div.querySelector(".date-warn");
+const btnWarn=div.querySelector(".btn-warn");
+const fontWarn=div.querySelector(".font-warn");
+
+header.addEventListener("click",e=>{
+  if (e.target.closest(".ann-card-delete")||e.target.closest(".ann-card-toggle")||e.target.closest(".dup-btn")||e.target.closest(".drag-handle")) return;
+  div.classList.toggle("expanded"); toggleBtn.textContent=div.classList.contains("expanded")?"▲":"▼";
+});
+toggleBtn.addEventListener("click",()=>{ div.classList.toggle("expanded"); toggleBtn.textContent=div.classList.contains("expanded")?"▲":"▼"; });
+
+deleteBtn.addEventListener("click",()=>{
+  const idx=announcements.findIndex(a=>a.id===id);
+  const deleted=announcements[idx];
+  announcements.splice(idx,1); isDirty=true; div.remove();
+  if (!annList.querySelector(".ann-card")) annList.innerHTML='<p class="empty-state">No announcements yet. Click "+ Add Announcement" to create one.</p>';
+  applyBanner(announcements); checkConflict();
+  toast('Deleted "'+(deleted.text||"(no text)")+'"',"info",()=>{
+    const empty=annList.querySelector(".empty-state"); if(empty) empty.remove();
+    announcements.splice(idx,0,deleted); isDirty=true;
+    const restored=createCard(deleted,false);
+    const cards=annList.querySelectorAll(".ann-card");
+    if (cards[idx]) annList.insertBefore(restored,cards[idx]); else annList.appendChild(restored);
+    applyBanner(announcements);
+  });
+});
+
+dupBtn.addEventListener("click",e=>{
+  e.stopPropagation();
+  const src=getAnn(); if(!src) return;
+  const copy={...src,id:genId(),text:src.text+" (copy)"};
+  const srcIdx=announcements.findIndex(a=>a.id===id);
+  announcements.splice(srcIdx+1,0,copy); isDirty=true;
+  const newCard=createCard(copy,true);
+  div.after(newCard);
+  checkConflict();
+  newCard.scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+
+function updatePreview() {
+  const bg=fBg.value||"#4f8ef7",tc=fTc.value||"#ffffff",txt=fText.value,ic=fIcon.value||"📢",btn=fBtnTxt.value;
+  dotEl.style.background=bg; prevSpan.textContent=(ic||"📢")+" "+(txt||"(no text)");
+  if (!txt) { prevEl.style.cssText=""; prevEl.innerHTML='<span style="font-family:var(--mono);font-size:12px;opacity:.5">Preview updates as you type</span>'; return; }
+  prevEl.style.background=bg; prevEl.style.color=tc;
+  prevEl.innerHTML='<span style="font-size:22px;line-height:1">'+ic+'</span><span style="font-family:var(--display);font-weight:600;font-size:16px;flex:1">'+txt+"</span>"+(btn?'<span style="padding:6px 18px;border-radius:100px;border:2px solid currentColor;font-family:var(--mono);font-size:12px">'+btn+"</span>":"");
+}
+function validateDates() {
+  const now=Date.now(),sv=fStart.value,ev=fEnd.value; let bad=false;
+  if (sv&&(isNaN(new Date(sv))||new Date(sv).getTime()<now)) bad=true;
+  if (ev&&(isNaN(new Date(ev))||new Date(ev).getTime()<now)) bad=true;
+  if (sv&&ev&&new Date(ev).getTime()<=new Date(sv).getTime()) bad=true;
+  dateWarn.classList.toggle("visible",bad); return bad;
+}
+function validateButton() {
+  const bad=(fBtnTxt.value.trim()!=="")!==(fBtnLnk.value.trim()!=="");
+  btnWarn.classList.toggle("visible",bad); return bad;
+}
+function syncBg() { const v=fBg.value.trim(); fBgPkr.value=(!v||!/^#[0-9a-fA-F]{6}$/.test(v))?"#4f8ef7":v; setField("bgColor",v||"#4f8ef7"); updatePreview(); }
+function syncTc() { const v=fTc.value.trim(); fTcPkr.value=(!v||!/^#[0-9a-fA-F]{6}$/.test(v))?"#ffffff":v; setField("textColor",v||"#ffffff"); updatePreview(); }
+
+fText.addEventListener("input",()=>{ setField("text",fText.value); updatePreview(); checkConflict(); validateFont(); });
+
+function validateFont() {
+  fontWarn.classList.toggle("visible", fText.value.length > 200);
+}
+validateFont();
+
+
+fIcon.addEventListener("input",()=>{ iconPrev.textContent=fIcon.value||"📢"; setField("icon",fIcon.value||"📢"); updatePreview(); });
+fBg.addEventListener("input",syncBg); fBg.addEventListener("change",syncBg);
+fBgPkr.addEventListener("input",()=>{ fBg.value=fBgPkr.value; setField("bgColor",fBgPkr.value); updatePreview(); });
+fTc.addEventListener("input",syncTc); fTc.addEventListener("change",syncTc);
+fTcPkr.addEventListener("input",()=>{ fTc.value=fTcPkr.value; setField("textColor",fTcPkr.value); updatePreview(); });
+fBtnTxt.addEventListener("input",()=>{ setField("buttonText",fBtnTxt.value); updatePreview(); validateButton(); });
+fBtnLnk.addEventListener("blur",()=>{ fBtnLnk.value=ensureHttps(fBtnLnk.value); setField("buttonLink",fBtnLnk.value); validateButton(); });
+fBtnLnk.addEventListener("input",()=>{ setField("buttonLink",fBtnLnk.value); validateButton(); });
+fStart.addEventListener("change",()=>{ setField("start",fStart.value?new Date(fStart.value).toISOString():""); validateDates(); const a=getAnn(); if(a) schedSpan.textContent=formatSchedule(a.start,a.end); checkConflict(); });
+fEnd.addEventListener("change",()=>{ setField("end",fEnd.value?new Date(fEnd.value).toISOString():""); validateDates(); const a=getAnn(); if(a) schedSpan.textContent=formatSchedule(a.start,a.end); checkConflict(); });
+
+const autoStartBtn = div.querySelector(".auto-start-btn");
+autoStartBtn.addEventListener("click", () => {
+  // Find all OTHER announcements that have an end time
+  const others = announcements.filter(a => a.id !== id && a.end);
+  if (others.length === 0) {
+    toast("No other announcements with an end time found.", "info");
+    return;
+  }
+  if (others.length === 1) {
+    fStart.value = isoToLocal(others[0].end);
+    fStart.dispatchEvent(new Event("change"));
+    toast("Start time set to after: " + (others[0].text || "(no text)"), "success");;
+    return;
+  }
+  // Multiple options — build a quick picker
+  const existing = div.querySelector(".auto-start-picker");
+  if (existing) { existing.remove(); return; }
+  const picker = document.createElement("div");
+  picker.className = "auto-start-picker";
+  picker.style.cssText = "margin-top:8px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;";
+  const fmtEnd = iso => new Date(iso).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  picker.innerHTML = others.map(a => {
+    const endStr = fmtEnd(a.end);
+    const txt = a.text || "(no text)";
+    return '<button class="auto-start-option" data-end="' + a.end + '" style="width:100%;text-align:left;padding:10px 14px;background:var(--surface2);border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;"><span style="color:var(--muted);margin-right:8px">ends ' + endStr + '</span>' + txt + '</button>';
+  }).join("") + '<button class="auto-start-cancel" style="width:100%;padding:8px 14px;background:transparent;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;">Cancel</button>';
+  autoStartBtn.after(picker);
+  picker.querySelectorAll(".auto-start-option").forEach(btn => {
+    btn.addEventListener("mouseenter", () => btn.style.background = "var(--surface)");
+    btn.addEventListener("mouseleave", () => btn.style.background = "var(--surface2)");
+    btn.addEventListener("click", () => {
+      fStart.value = isoToLocal(btn.dataset.end);
+      fStart.dispatchEvent(new Event("change"));
+      toast("Start time updated.", "success");
+      picker.remove();
+    });
+  });
+  picker.querySelector(".auto-start-cancel").addEventListener("click", () => picker.remove());
+});
+
+const autoEndBtn = div.querySelector(".auto-end-btn");
+autoEndBtn.addEventListener("click", () => {
+  // Find all OTHER announcements that have a start time
+  const others = announcements.filter(a => a.id !== id && a.start);
+  if (others.length === 0) {
+    toast("No other announcements with a start time found.", "info");
+    return;
+  }
+  if (others.length === 1) {
+    fEnd.value = isoToLocal(others[0].start);
+    fEnd.dispatchEvent(new Event("change"));
+    toast("End time set to before: " + (others[0].text || "(no text)"), "success");
+    return;
+  }
+  // Multiple options — build a quick picker
+  const existing = div.querySelector(".auto-end-picker");
+  if (existing) { existing.remove(); return; }
+  const picker = document.createElement("div");
+  picker.className = "auto-end-picker";
+  picker.style.cssText = "margin-top:8px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;";
+  const fmtStart = iso => new Date(iso).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  picker.innerHTML = others.map(a => {
+    const startStr = fmtStart(a.start);
+    const txt = a.text || "(no text)";
+    return '<button class="auto-end-option" data-start="' + a.start + '" style="width:100%;text-align:left;padding:10px 14px;background:var(--surface2);border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;"><span style="color:var(--muted);margin-right:8px">starts ' + startStr + '</span>' + txt + '</button>';
+  }).join("") + '<button class="auto-end-cancel" style="width:100%;padding:8px 14px;background:transparent;border:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;">Cancel</button>';
+  autoEndBtn.after(picker);
+  picker.querySelectorAll(".auto-end-option").forEach(btn => {
+    btn.addEventListener("mouseenter", () => btn.style.background = "var(--surface)");
+    btn.addEventListener("mouseleave", () => btn.style.background = "var(--surface2)");
+    btn.addEventListener("click", () => {
+      fEnd.value = isoToLocal(btn.dataset.start);
+      fEnd.dispatchEvent(new Event("change"));
+      toast("End time updated.", "success");
+      picker.remove();
+    });
+  });
+  picker.querySelector(".auto-end-cancel").addEventListener("click", () => picker.remove());
+});
+
+enableDrag(div);
+return div;
+
+}
+
+function renderList() {
+annList.innerHTML="";
+if (!announcements.length) { annList.innerHTML='<p class="empty-state">No announcements yet. Click "+ Add Announcement" to create one.</p>'; return; }
+announcements.forEach(ann=>annList.appendChild(createCard(ann,announcements.length===1)));
+updateCountdowns();
+}
+
+onSnapshot(bannerRef, snap=>{
+statusMsg.style.display="none"; authSection.style.display="block";
+const anns=parseData(snap.exists()?snap.data():null);
+applyBanner(anns);
+if (!isDirty) { announcements=anns; if(editorPanel.style.display!=="none") renderList(); }
+}, ()=>showBannerError());
+
+onAuthStateChanged(auth, async user=>{
+if (user) {
+loginPanel.style.display="none"; editorPanel.style.display="block"; toolsPanel.style.display="block";
+const snap=await getDoc(bannerRef);
+announcements=parseData(snap.exists()?snap.data():null);
+savedAnnouncements=JSON.parse(JSON.stringify(announcements));
+isDirty=false; renderList();
+} else { loginPanel.style.display="block"; editorPanel.style.display="none"; toolsPanel.style.display="none"; }
+});
+
+addAnnBtn.addEventListener("click",()=>{
+const ann=defaultAnn();
+const prev=announcements.length>0?announcements[announcements.length-1]:null;
+announcements.push(ann); isDirty=true; checkConflict();
+const empty=annList.querySelector(".empty-state"); if(empty) empty.remove();
+const card=createCard(ann,true);
+annList.appendChild(card);
+checkConflict();
+
+card.scrollIntoView({behavior:"smooth",block:"nearest"});
+
+});
+
+document.getElementById("revert-btn").addEventListener("click",()=>{
+if (!isDirty) { toast("No unsaved changes to revert.","info"); return; }
+showModal("Revert Changes", "This will undo all unsaved changes.", () => {
+announcements = JSON.parse(JSON.stringify(savedAnnouncements));
+isDirty = false;
+renderList();
+applyBanner(announcements);
+toast("Changes reverted.","info");
+});
+});
+
+signoutBtn.addEventListener("click",()=>signOut(auth));
+
+loginBtn.addEventListener("click",async()=>{
+errorMsg.textContent="";
+const email=loginEmail.value.trim(),pw=loginPw.value;
+if (!email||!pw) { errorMsg.textContent="😑 You need to enter an email and password!"; return; }
+loginBtn.disabled=true; loginBtn.textContent="Signing in...";
+try { await signInWithEmailAndPassword(auth,email,pw); }
+catch(e) { errorMsg.textContent=friendlyError(e.code); loginBtn.disabled=false; loginBtn.textContent="Sign In"; }
+});
+loginPw.addEventListener("keydown",e=>{ if(e.key==="Enter") loginBtn.click(); });
+
+saveBtn.addEventListener("click",async()=>{
+if (annList.querySelectorAll(".date-warn.visible").length>0) { toast("📅 Fix the invalid dates before saving.","error"); return; }
+if (annList.querySelectorAll(".btn-warn.visible").length>0)  { toast("🔘 Fix the invalid buttons before saving.","error"); return; }
+if (conflictWarn.classList.contains("visible")) { toast("📢 Fix the announcement conflict before saving.","error"); return; }
+const longText = announcements.some(a => a.text && a.text.length > 200);
+saveBtn.disabled=true; saveBtn.textContent="Saving...";
+try {
+const cleaned=announcements.map(a=>({...a,text:a.text.trim(),icon:(a.icon||"").trim()||"📢",bgColor:(a.bgColor||"").trim()||"#4f8ef7",textColor:(a.textColor||"").trim()||"#ffffff",buttonText:(a.buttonText||"").trim(),buttonLink:ensureHttps(a.buttonLink||"")}));
+await setDoc(bannerRef,{announcements:cleaned});
+announcements=cleaned; savedAnnouncements=JSON.parse(JSON.stringify(cleaned)); isDirty=false; toast(longText ? "✓ Saved!\n⚠️ Font reduced in live banner (text over 200 chars)." : "✓ Saved!","success"); applyBanner(announcements); renderList();
+} catch(e) { toast("Error: "+e.message,"error"); }
+saveBtn.disabled=false;
+saveBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save to Firebase';
+});
+
+// Custom confirm modal (replaces confirm() which is blocked in iframes)
+function showModal(title, msg, onConfirm) {
+const overlay = document.getElementById("modal-overlay");
+document.getElementById("modal-title").textContent = title;
+document.getElementById("modal-msg").textContent = msg;
+overlay.style.display = "flex";
+const confirmBtn = document.getElementById("modal-confirm");
+const cancelBtn  = document.getElementById("modal-cancel");
+const cleanup = () => { overlay.style.display = "none"; confirmBtn.replaceWith(confirmBtn.cloneNode(true)); cancelBtn.replaceWith(cancelBtn.cloneNode(true)); };
+document.getElementById("modal-confirm").addEventListener("click", () => { cleanup(); onConfirm(); }, {once:true});
+document.getElementById("modal-cancel").addEventListener("click",  () => cleanup(), {once:true});
+}
+
+document.getElementById("clear-btn").addEventListener("click",async()=>{
+if (announcements.length === 0) { toast("📭 No announcements to clear.","info"); return; }
+showModal("Clear All", "This will delete all announcements. This cannot be undone.", async () => {
+const btn=document.getElementById("clear-btn"); btn.disabled=true;
+try { await setDoc(bannerRef,{announcements:[]}); announcements=[]; isDirty=false; renderList(); applyBanner([]); toast("All announcements cleared.","success"); }
+catch(e) { toast("Error: "+e.message,"error"); }
+btn.disabled=false;
+});
+});
+
+async function removeExpired() {
+const now=Date.now();
+const expired=announcements.filter(a=>a.end&&new Date(a.end).getTime()<now);
+if (!expired.length) return;
+const remaining=announcements.filter(a=>!a.end||new Date(a.end).getTime()>=now);
+try { await setDoc(bannerRef,{announcements:remaining}); announcements=remaining; applyBanner(announcements); if(editorPanel.style.display!=="none"&&!isDirty) renderList(); } catch(_){}
+}
+removeExpired();
+setInterval(removeExpired,60000);
+
+window.addEventListener("beforeunload",e=>{ if(isDirty){e.preventDefault();e.returnValue="";} });
+
+function friendlyError(code) {
+if (["auth/wrong-password","auth/user-not-found","auth/invalid-credential","auth/invalid-email"].includes(code)) return "😴 Incorrect email or password.";
+if (code==="auth/too-many-requests") return "🛑 Too many attempts. Try again later.";
+return "Sign-in failed. Please try again.";
+}
+
+})();
+</script>
+
+</body>
+</html>

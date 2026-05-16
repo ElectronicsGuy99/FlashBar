@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FlashBar Banner</title>
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/8879/8879179.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script>if(window.self!==window.top)document.documentElement.style.overflow="hidden";</script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--bg:#0e0e0e;--success:#4dff9e;--danger:#ff4d4d;--mono:'DM Mono',monospace;--display:'Outfit',sans-serif;}
+    body{background:var(--bg);margin:0;padding:0;}
+    #live-banner{display:none;width:100%;padding:18px 28px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.01em;height:120px;overflow:hidden;}
+    #live-banner.visible{display:flex;}
+    #banner-icon{font-size:22px;line-height:1;}
+    #banner-text{flex:1;min-width:0;}
+    #banner-btn{display:inline-block;padding:7px 20px;border-radius:100px;font-family:var(--mono);font-size:13px;font-weight:500;text-decoration:none;border:2px solid currentColor;transition:opacity .2s;white-space:nowrap;flex-shrink:0;}
+    #banner-btn:hover{opacity:.75;}
+    #banner-status{display:none;width:100%;padding:18px 28px;font-family:var(--display);font-weight:600;font-size:16px;text-align:center;height:120px;overflow:hidden;}
+    #banner-status.visible{display:flex;align-items:center;justify-content:center;}
+    #banner-status.no-announce{color:var(--success);}
+    #banner-status.load-error{color:var(--danger);}
+  </style>
+</head>
+<body>
+
+<div id="live-banner" role="banner" aria-live="polite">
+  <span id="banner-icon"></span>
+  <span id="banner-text"></span>
+  <a id="banner-btn" href="#" target="_blank" rel="noopener" style="display:none"></a>
+</div>
+<div id="banner-status" role="status"></div>
+
+<script type="module">
+  import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const bannerRef = doc(db, "banner", "main");
+
+  const liveBanner   = document.getElementById("live-banner");
+  const bannerIcon   = document.getElementById("banner-icon");
+  const bannerText   = document.getElementById("banner-text");
+  const bannerBtn    = document.getElementById("banner-btn");
+  const bannerStatus = document.getElementById("banner-status");
+
+  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    bannerStatus.textContent = "⚙️ Firebase is not configured — read the README to see how to set this up.";
+    bannerStatus.classList.add("visible","load-error");
+  } else {
+
+  function getActiveAt(anns, t) {
+    const active = anns.filter(a => {
+      if (!a.text) return false;
+      const s = a.start ? new Date(a.start).getTime() : 0;
+      const e = a.end   ? new Date(a.end).getTime()   : Infinity;
+      return t >= s && t <= e;
+    });
+    const scheduled  = active.filter(a => a.end);
+    const indefinite = active.filter(a => !a.end);
+    if (scheduled.length > 1 || indefinite.length > 1) return "conflict";
+    if (scheduled.length === 1) return scheduled[0];
+    if (indefinite.length === 1) return indefinite[0];
+    return null;
+  }
+
+  function parseData(data) {
+    if (!data) return [];
+    if (Array.isArray(data.announcements)) return data.announcements;
+    if (typeof data.text !== "undefined") return [{ text:data.text||"", icon:data.icon||"📢", bgColor:data.bgColor||"#4f8ef7", textColor:data.textColor||"#ffffff", buttonText:data.buttonText||"", buttonLink:data.buttonLink||"", start:data.start||"", end:data.end||"" }];
+    return [];
+  }
+
+  function applyBanner(anns) {
+    bannerStatus.classList.remove("visible","no-announce","load-error");
+    liveBanner.classList.remove("visible");
+    const active = getActiveAt(anns, Date.now());
+    if (!active || active === "conflict") {
+      bannerStatus.textContent = "✅ There are no announcements!";
+      bannerStatus.classList.add("visible","no-announce");
+      return;
+    }
+    liveBanner.style.background = active.bgColor   || "#4f8ef7";
+    liveBanner.style.color      = active.textColor || "#ffffff";
+    bannerIcon.textContent = active.icon || "📢";
+    bannerText.textContent = active.text;
+    bannerText.style.fontSize = active.text.length > 200 ? "13px" : "";
+    if (active.buttonText && active.buttonLink) {
+      bannerBtn.textContent   = active.buttonText;
+      bannerBtn.href          = active.buttonLink;
+      bannerBtn.style.color   = active.textColor || "#ffffff";
+      bannerBtn.style.display = "inline-block";
+    } else {
+      bannerBtn.style.display = "none";
+    }
+    liveBanner.classList.add("visible");
+  }
+
+  onSnapshot(bannerRef, snap => {
+    applyBanner(parseData(snap.exists() ? snap.data() : null));
+  }, () => {
+    bannerStatus.textContent = "🙁 There was an error loading the announcement banner.";
+    bannerStatus.classList.add("visible","load-error");
+  });
+  }
+</script>
+</body>
+</html>
