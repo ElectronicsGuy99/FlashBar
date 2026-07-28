@@ -1,6 +1,6 @@
 # FlashBar
 
-A lightweight, real-time announcement banner system powered by Firebase. Drop the banner into any webpage via an iframe, and control what it shows from a password-protected dashboard — no redeploys needed. To see a live demo, visit the [FlashBar_Dashboard](https://electronicsguy99.github.io/FlashBar/FlashBar_Dashboard.html).
+A lightweight, real-time announcement banner system powered by Firebase. Drop the banner into any webpage via an iframe, and control what it shows from a password-protected dashboard — no redeploys needed. To see a live demo, visit the [FlashBar_Dashboard](https://electronicsguy99.github.io/FlashBar/FlashBar_Dashboard.html). You will not be able to log into this demo, to log in, you will have to download and set it up using the [instructions below](#setup).
 
 ---
 
